@@ -5,6 +5,7 @@
 #include <mysql/plugin_auth.h>
 #include <my_sys.h>
 #include <mysqld_error.h>
+#include <log.h>
 #include "server_plugin.h"
 #include "gssapi_errmsg.h"
 
@@ -25,16 +26,84 @@ static void log_error( OM_uint32 major, OM_uint32 minor, const char *msg)
     my_printf_error(ER_UNKNOWN_ERROR, "Server GSSAPI error : %s", MYF(0), msg);
   }
 }
+/*
+  Generate default principal service name formatted as principal name "mariadb/server.fqdn@REALM"
+*/
+#ifdef HAVE_KRB5_H
+#include <krb5.h>
+static char* get_default_principal_name()
+{
+  static char default_name[1024];
+  char *unparsed_name= NULL;
+  krb5_context context= NULL;
+  krb5_principal principal= NULL;
+  krb5_keyblock *key= NULL;
+
+  if(krb5_init_context(&context))
+  {
+    sql_print_warning("GSSAPI plugin : krb5_init_context failed");
+    goto cleanup;
+  }
+
+  if (krb5_sname_to_principal(context, NULL, "mariadb", KRB5_NT_SRV_HST, &principal))
+  {
+    sql_print_warning("GSSAPI plugin :  krb5_sname_to_principal failed");
+    goto cleanup;
+  }
+
+  if (krb5_unparse_name(context, principal, &unparsed_name))
+  {
+    sql_print_warning("GSSAPI plugin :  krb5_unparse_name failed");
+    goto cleanup;
+  }
+
+  /* Check for entry in keytab */
+  if (krb5_kt_read_service_key(context, NULL, principal, 0, 0, &key))
+  {
+    sql_print_warning("GSSAPI plugin : default principal '%s' not found in keytab", unparsed_name);
+    goto cleanup;
+  }
+
+  strncpy(default_name, unparsed_name, sizeof(default_name)-1);
+
+cleanup:
+  if (key)
+    krb5_free_keyblock(context, key);
+  if (unparsed_name)
+    krb5_free_unparsed_name(context, unparsed_name);
+  if (principal)
+    krb5_free_principal(context, principal);
+  if (context) 
+    krb5_free_context(context);
+
+  return default_name;
+}
+#else
+static char* get_default_principal_name()
+{
+  return "";
+}
+#endif
+
 
 int plugin_init()
 {
   gss_buffer_desc principal_name_buf;
   OM_uint32 major= 0, minor= 0;
   gss_cred_id_t cred= GSS_C_NO_CREDENTIAL;
-  
+
+  if(srv_keytab_path && srv_keytab_path[0])
+  {
+     setenv("KRB5_KTNAME", srv_keytab_path, 1);
+  }
+
+  if(!srv_principal_name || !srv_principal_name[0])
+    srv_principal_name= get_default_principal_name();
+ 
   /* import service principal from plain text */
   if(srv_principal_name && srv_principal_name[0])
   {
+    sql_print_information("GSSAPI plugin : using principal name '%s'", srv_principal_name);
     principal_name_buf.length= strlen(srv_principal_name);
     principal_name_buf.value= srv_principal_name;
     major= gss_import_name(&minor, &principal_name_buf, GSS_C_NT_USER_NAME, &service_name);
@@ -49,10 +118,7 @@ int plugin_init()
     service_name=  GSS_C_NO_NAME;
   }
 
-  if(srv_keytab_path && srv_keytab_path[0])
-  {
-     setenv("KRB5_KTNAME", srv_keytab_path, 1);
-  }
+ 
   
   /* Check if SPN configuration is OK */
   major= gss_acquire_cred(&minor, service_name, GSS_C_INDEFINITE,
