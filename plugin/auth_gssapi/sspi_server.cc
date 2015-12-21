@@ -36,18 +36,17 @@ static char *get_default_principal_name()
   size= sizeof(default_principal);
   if (GetUserNameEx(NameServicePrincipal,default_principal,&size))
     return default_principal;
+
+  char domain[PRINCIPAL_NAME_MAX+1];
+  char host[PRINCIPAL_NAME_MAX+1];
+  size= sizeof(domain);
+  if (GetComputerNameEx(ComputerNameDnsDomain,domain,&size) && size > 0)
   {
-    char domain[PRINCIPAL_NAME_MAX+1];
-    char host[PRINCIPAL_NAME_MAX+1];
-    size= sizeof(domain);
-    if (GetComputerNameEx(ComputerNameDnsDomain,domain,&size))
+    size= sizeof(host);
+    if (GetComputerNameEx(ComputerNameDnsHostname,host,&size))
     {
-      size= sizeof(host);
-      if (GetComputerNameEx(ComputerNameDnsHostname,domain,&size))
-      {
-        _snprintf(default_principal,sizeof(default_principal),"%s$@%s",host, domain);
-        return default_principal;
-      }
+      _snprintf(default_principal,sizeof(default_principal),"%s$@%s",host, domain);
+      return default_principal;
     }
   }
   /* Unable to retrieve useful name, return something */
@@ -62,7 +61,6 @@ static int get_client_name_from_context(CtxtHandle *ctxt,
   int use_full_name)
 {
   SecPkgContext_NativeNames native_names;
-  SecPkgContext_Names names;
   SECURITY_STATUS sspi_ret;
   char *p;
 
@@ -78,32 +76,36 @@ static int get_client_name_from_context(CtxtHandle *ctxt,
     }
     strncpy(name, native_names.sClientName, name_len);
     FreeContextBuffer(&native_names);
-  }
-  else if ((sspi_ret= QueryContextAttributes(ctxt, SECPKG_ATTR_NAMES, &names)) == SEC_E_OK)
-  {
-    /* Extract user from Windows name realm\user */
-    if(!use_full_name)
-    {
-      p = strrchr(names.sUserName,'\\');
-      if(!p)
-        p = names.sUserName;
-      else
-        p++;
-      strncpy(name, p, name_len);
-    }
-    else
-    {
-      strncpy(name, names.sUserName, name_len);
-    }
-    FreeContextBuffer(&names);
     return CR_OK;
   }
-  else
+  
+  sspi_ret= ImpersonateSecurityContext(ctxt);
+  if (sspi_ret == SEC_E_OK)
   {
-    log_error(sspi_ret, "QueryContexAttributes");
-    return CR_ERROR;
+    ULONG len= name_len;
+    if (!GetUserNameEx(NameSamCompatible, name, &len))
+    {
+      log_error(GetLastError(), "GetUserNameEx");
+      RevertSecurityContext(ctxt);
+      return CR_ERROR;
+    }
+    RevertSecurityContext(ctxt);
+
+    /* Extract user from Windows name realm\user */
+    if (!use_full_name)
+    {
+      p = strrchr(name, '\\');
+      if (p)
+      {
+        p++;
+        memmove(name, p, name + len + 1 - p);
+      }
+    }
+    return CR_OK;
   }
-  return CR_OK;
+
+  log_error(sspi_ret, "ImpersonateSecurityContext");
+  return CR_ERROR;
 }
 
 
