@@ -83,9 +83,7 @@ CREATE USER usr1 IDENTIFIED WITH gssapi AS 'usr1@EXAMPLE.COM';
 
 (replace  with real username and realm)
 
-The part after AS is mechanism specific, and needs to be
- 'machine\\usr1' for Windows users identified with NTLM and  
- 'MicrosoftAccount\\usr1@hotmail.com' for Windows accounts with Windows cloud authentication
+The part after AS is mechanism specific, and needs to be ``machine\\usr1`` for Windows users identified with NTLM.
 
 You may also use alternative *short* form of CREATE USER
 
