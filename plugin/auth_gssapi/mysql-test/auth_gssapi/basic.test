@@ -1,0 +1,14 @@
+--replace_result $GSSAPI_SHORTNAME GSSAPI_SHORTNAME
+eval CREATE USER $GSSAPI_SHORTNAME IDENTIFIED WITH gssapi;
+connect (con1,localhost,$GSSAPI_SHORTNAME,,);
+disconnect con1;
+connection default;
+--replace_result $GSSAPI_SHORTNAME GSSAPI_SHORTNAME
+eval DROP USER $GSSAPI_SHORTNAME;
+
+--replace_result $GSSAPI_FULLNAME GSSAPI_FULLNAME
+eval CREATE USER usr1 IDENTIFIED WITH gssapi as '$GSSAPI_FULLNAME';
+connect (con1,localhost,usr1,,);
+disconnect con1;
+connection default;
+DROP USER usr1;
