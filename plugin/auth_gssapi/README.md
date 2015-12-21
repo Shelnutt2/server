@@ -107,7 +107,7 @@ mysql --plugin-dir=/path/to/plugin-dir -u usr1
 #Plugin variables
 -	**gssapi-keytab-path** (Unix only) - Path to the server keytab file
 -	**gssapi-principal-name** - name of the service principal. 
--	**gssapi-mech** (Windows only) - Name of the SSPI package used by server. Can be either 'Kerberos' or 'Negotiate'.
+-	**gssapi-mech-name** (Windows only) - Name of the SSPI package used by server. Can be either 'Kerberos' or 'Negotiate'.
  Defaults to 'Negotiate' (both Kerberos and NTLM users can connect) 
  Set it to 'Kerberos', to prevent less secure NTLM in domain environments,  but leave it as default(Negotiate) 
  to allow non-domain environment (e.g if server does not run in domain enviroment).
@@ -119,9 +119,9 @@ Overview of the protocol between client and server
 
 1. Server : Construct gssapi-principal-name if not set in my.cnf. On Unixes defaults to hostbased name for service "mariadb". On Windows to user's or machine's domain names. 
 Acquire credentials for gssapi-principal-name with ```gss_acquire_cred() / AcquireSecurityCredentials()```.
-Send packet with ```"<gssapi-principal-name>\0<gssapi-mech>"``` to client ( on Unix, empty string used for gssapi-mech)
+Send packet with principal name and mech ```"gssapi-principal-name\0gssapi-mech-name\0"``` to client ( on Unix, empty string used for gssapi-mech)
 
-2. Client: execute ```gss_init_sec_context() / InitializeSecurityContext()``` passing gssapi-principal-name / gssapi-mech parameters.
+2. Client: execute ```gss_init_sec_context() / InitializeSecurityContext()``` passing gssapi-principal-name / gssapi-mech-name parameters.
 Send resulting GSSAPI blob to server.
 
 3. Server : receive blob from client, execute ```gss_accept_sec_context()/ AcceptSecurityContext()```, send resulting blob back to client
