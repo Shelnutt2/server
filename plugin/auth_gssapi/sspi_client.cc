@@ -18,7 +18,7 @@ static void log_error(MYSQL *mysql, SECURITY_STATUS err, const char *msg)
   {
     char buf[1024];
     sspi_errmsg(err, buf, sizeof(buf));
-    log_client_error(mysql, "SSPI client error 0x%x - %s - %s", msg, buf);
+    log_client_error(mysql, "SSPI client error 0x%x - %s - %s", err, msg, buf);
   }
   else
   {
@@ -52,6 +52,7 @@ int auth_client(char *principal_name, char *mech, MYSQL *mysql, MYSQL_PLUGIN_VIO
   {
     mech= "Kerberos";
   }
+
   sspi_err = AcquireCredentialsHandle(
     NULL,
     mech,

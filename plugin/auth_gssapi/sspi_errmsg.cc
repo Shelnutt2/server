@@ -101,7 +101,7 @@ void sspi_errmsg(int err, char *buf, size_t size)
       if (len + 2 < size)
       {
         memcpy(buf, error_symbols[i].sym, len);
-        buf[len + 1]= ' ';
+        buf[len]= ' ';
         buf += len + 1;
         size-= len + 1;
       }
@@ -118,7 +118,7 @@ void sspi_errmsg(int err, char *buf, size_t size)
   {
     /* Trim trailing \n\r*/
     char *p; 
-    for(p= buf + len;p > buf && (*p == '\n' || *p=='\r');p--)
+    for(p= buf + len;p > buf && (*p == '\n' || *p=='\r' || *p == 0);p--)
       *p= 0;
   }
 }
