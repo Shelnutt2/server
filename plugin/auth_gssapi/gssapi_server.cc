@@ -209,7 +209,7 @@ int auth_server(MYSQL_PLUGIN_VIO *vio,const char *user, size_t userlen, int use_
 
   /* extract plain text client name */
   major= gss_display_name(&minor, client_name, &client_name_buf, NULL);
-  if (major == GSS_S_BAD_NAME)
+  if (GSS_ERROR(major))
   {
     log_error(major, minor, "gss_display_name");
     goto cleanup;
