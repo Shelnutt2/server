@@ -13,24 +13,36 @@ if ($^O eq "MSWin32")
   $ENV{'GSSAPI_FULLNAME'}  = $fullname;
   $ENV{'GSSAPI_SHORTNAME'} = $ENV{'USERNAME'};
 }
-elsif (!$ENV{'GSSAPI_FULLNAME'})
+else
 {
-  my $s = `klist |grep 'Default principal: '`;
-  if ($s)
+  if (!$ENV{'GSSAPI_FULLNAME'})
   {
-    chomp($s);
-    my $fullname = substr($s,19);
-    my $shortname = (split /@/,$fullname) [0];
-    $ENV{'GSSAPI_FULLNAME'} = $fullname;
-    $ENV{'GSSAPI_SHORTNAME'} = $shortname;
+    my $s = `klist |grep 'Default principal: '`;
+    if ($s)
+    {
+      chomp($s);
+      my $fullname = substr($s,19);
+      $ENV{'GSSAPI_FULLNAME'} = $fullname;
+    } 
   }
-  # TODO: KRB5_KTNAME might need to be set, and principal name, unless it is mariadb/fqdn@REALM
+  $ENV{'GSSAPI_SHORTNAME'} = (split /@/, $ENV{'GSSAPI_FULLNAME'}) [0];
+  if ($ENV{'GSSAPI_KRB5_KTNAME'})
+  {
+     $ENV{'GSSAPI_KEYTAB_PATH_PARAM'}="--gssapi-keytab-path=$ENV{'GSSAPI_KRB5_KTNAME'}";
+  }
+  if ($ENV{'GSSAPI_PRINCIPAL_NAME'})
+  {
+    $ENV{'GSSAPI_PRINCIPAL_NAME_PARAM'}="--gssapi-principal-name=$ENV{'GSSAPI_PRINCIPAL_NAME'}";
+  }
 }
+
 
 if (!$ENV{'GSSAPI_FULLNAME'}  || !$ENV{'GSSAPI_SHORTNAME'})
 {
   return "Environment variable GSSAPI_SHORTNAME and GSSAPI_FULLNAME need to be set"
 }
+
+
 sub is_default { 1 }
 
 bless { };
