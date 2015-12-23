@@ -26,10 +26,11 @@ static void log_error( OM_uint32 major, OM_uint32 minor, const char *msg)
     my_printf_error(ER_UNKNOWN_ERROR, "Server GSSAPI error : %s", MYF(0), msg);
   }
 }
+
+
 /*
   Generate default principal service name formatted as principal name "mariadb/server.fqdn@REALM"
 */
-#ifdef HAVE_KRB5_H
 #include <krb5.h>
 static char* get_default_principal_name()
 {
@@ -78,12 +79,6 @@ cleanup:
 
   return default_name;
 }
-#else
-static char* get_default_principal_name()
-{
-  return "";
-}
-#endif
 
 
 int plugin_init()
