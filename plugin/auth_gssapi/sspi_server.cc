@@ -219,7 +219,9 @@ int auth_server(MYSQL_PLUGIN_VIO *vio, const char *user, size_t user_len, int co
   ret= _stricmp(client_name, user) == 0 ? CR_OK : CR_ERROR;
   if (ret != CR_OK)
   {
-    my_printf_error(ER_UNKNOWN_ERROR, "GSSAPI name mismatch, got %s", MYF(0), client_name);
+    my_printf_error(ER_ACCESS_DENIED_ERROR, 
+      "GSSAPI name mismatch, requested '%s', actual name '%s'",
+      MYF(0), user, client_name);
   }
 
 cleanup:
