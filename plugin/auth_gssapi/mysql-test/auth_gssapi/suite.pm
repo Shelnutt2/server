@@ -28,14 +28,6 @@ else
     } 
   }
   $ENV{'GSSAPI_SHORTNAME'} = (split /@/, $ENV{'GSSAPI_FULLNAME'}) [0];
-  if ($ENV{'GSSAPI_KRB5_KTNAME'})
-  {
-     $ENV{'GSSAPI_KEYTAB_PATH_PARAM'}="--loose-gssapi-keytab-path=$ENV{'GSSAPI_KRB5_KTNAME'}";
-  }
-  if ($ENV{'GSSAPI_PRINCIPAL_NAME'})
-  {
-    $ENV{'GSSAPI_PRINCIPAL_NAME_PARAM'}="--loose-gssapi-principal-name=$ENV{'GSSAPI_PRINCIPAL_NAME'}";
-  }
 }
 
 
@@ -44,7 +36,10 @@ if (!$ENV{'GSSAPI_FULLNAME'}  || !$ENV{'GSSAPI_SHORTNAME'})
   return "Environment variable GSSAPI_SHORTNAME and GSSAPI_FULLNAME need to be set"
 }
 
-print ("GSSAPI_FULLNAME=$ENV{'GSSAPI_FULLNAME'},GSSAPI_SHORTNAME=$ENV{'GSSAPI_SHORTNAME'}\n");
+foreach $var ('GSSAPI_SHORTNAME','GSSAPI_FULLNAME','GSSAPI_KEYTAB_PATH','GSSAPI_PRINCIPAL_NAME')
+{
+   print "$var=$ENV{$var}\n";
+}
 
 sub is_default { 1 }
 
