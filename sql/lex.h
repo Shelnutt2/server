@@ -97,6 +97,7 @@ static SYMBOL symbols[] = {
   { "BY",		SYM(BY)},
   { "BYTE",		SYM(BYTE_SYM)},
   { "CACHE",		SYM(CACHE_SYM)},
+  { "CACHETABLE",	SYM(CACHETABLE_SYM)},
   { "CALL",             SYM(CALL_SYM)},
   { "CASCADE",		SYM(CASCADE)},
   { "CASCADED",         SYM(CASCADED)},

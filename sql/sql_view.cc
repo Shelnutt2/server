@@ -967,7 +967,8 @@ static int mysql_register_view(THD *thd, TABLE_LIST *view,
                   });
 
   if ((view->updatable_view= (can_be_merged &&
-                              view->algorithm != VIEW_ALGORITHM_TMPTABLE)))
+                              (view->algorithm != VIEW_ALGORITHM_TMPTABLE &&
+                              view->algorithm != VIEW_ALGORITHM_CACHETABLE))))
   {
     /* TODO: change here when we will support UNIONs */
     for (TABLE_LIST *tbl= lex->select_lex.table_list.first;
@@ -1509,7 +1510,8 @@ bool mysql_make_view(THD *thd, TABLE_SHARE *share, TABLE_LIST *table,
     */
     old_lex->set_stmt_unsafe_flags(lex->get_stmt_unsafe_flags());
 
-    view_is_mergeable= (table->algorithm != VIEW_ALGORITHM_TMPTABLE &&
+    view_is_mergeable= ((table->algorithm != VIEW_ALGORITHM_TMPTABLE &&
+                        table->algorithm != VIEW_ALGORITHM_CACHETABLE) &&
                         lex->can_be_merged());
 
     if (view_is_mergeable)
@@ -1681,7 +1683,20 @@ bool mysql_make_view(THD *thd, TABLE_SHARE *share, TABLE_LIST *table,
 	to make it processed by mysql_handle_derived(),
 	but it will not be included to SELECT_LEX tree, because it
 	will not be executed
-      */ 
+      */
+      goto ok;
+    }
+
+    if(table->algorithm == VIEW_ALGORITHM_CACHETABLE)
+    {
+      table->derived_type= VIEW_ALGORITHM_CACHETABLE;
+      DBUG_PRINT("info", ("algorithm: CACHE TABLE"));
+      view_select->linkage= DERIVED_TABLE_TYPE;
+      table->updatable= 0;
+      table->effective_with_check= VIEW_CHECK_NONE;
+      old_lex->subqueries= TRUE;
+
+      table->derived= &lex->unit;
       goto ok;
     }
 

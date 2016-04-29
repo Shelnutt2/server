@@ -96,6 +96,8 @@ static ulonglong view_algo_to_frm(ulonglong val)
       return VIEW_ALGORITHM_MERGE_FRM;
     case VIEW_ALGORITHM_TMPTABLE:
       return VIEW_ALGORITHM_TMPTABLE_FRM;
+    case VIEW_ALGORITHM_CACHETABLE:
+      return VIEW_ALGORITHM_CACHETABLE_FRM;
   }
   DBUG_ASSERT(0); /* Should never happen */
   return VIEW_ALGORITHM_UNDEFINED;
@@ -111,6 +113,8 @@ static ulonglong view_algo_from_frm(ulonglong val)
       return VIEW_ALGORITHM_MERGE;
     case VIEW_ALGORITHM_TMPTABLE_FRM:
       return VIEW_ALGORITHM_TMPTABLE;
+    case VIEW_ALGORITHM_CACHETABLE_FRM:
+      return VIEW_ALGORITHM_CACHETABLE;
   }
 
   /*

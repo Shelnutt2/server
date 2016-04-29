@@ -2280,7 +2280,10 @@ static const LEX_STRING *view_algorithm(TABLE_LIST *table)
   static const LEX_STRING undefined= { C_STRING_WITH_LEN("UNDEFINED") };
   static const LEX_STRING merge=     { C_STRING_WITH_LEN("MERGE") };
   static const LEX_STRING temptable= { C_STRING_WITH_LEN("TEMPTABLE") };
+  static const LEX_STRING cachetable= { C_STRING_WITH_LEN("CACHETABLE") };
   switch (table->algorithm) {
+  case VIEW_ALGORITHM_CACHETABLE:
+    return &cachetable;
   case VIEW_ALGORITHM_TMPTABLE:
     return &temptable;
   case VIEW_ALGORITHM_MERGE:
@@ -6189,7 +6192,7 @@ static int get_schema_views_record(THD *thd, TABLE_LIST *tables,
         table->pos_in_table_list->table_open_method & OPEN_FULL_TABLE)
     {
       updatable_view= 0;
-      if (tables->algorithm != VIEW_ALGORITHM_TMPTABLE)
+      if (tables->algorithm != VIEW_ALGORITHM_TMPTABLE && tables->algorithm != VIEW_ALGORITHM_CACHETABLE)
       {
         /*
           We should use tables->view->select_lex.item_list here

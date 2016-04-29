@@ -1098,6 +1098,7 @@ bool my_yyoverflow(short **a, YYSTYPE **b, ulong *yystacksize);
 %token  BY                            /* SQL-2003-R */
 %token  BYTE_SYM
 %token  CACHE_SYM
+%token  CACHETABLE_SYM
 %token  CALL_SYM                      /* SQL-2003-R */
 %token  CASCADE                       /* SQL-2003-N */
 %token  CASCADED                      /* SQL-2003-R */
@@ -13981,6 +13982,7 @@ keyword_sp:
         | BOOL_SYM                 {}
         | BOOLEAN_SYM              {}
         | BTREE_SYM                {}
+        | CACHETABLE_SYM           {}
         | CASCADED                 {}
         | CATALOG_NAME_SYM         {}
         | CHAIN_SYM                {}
@@ -15791,6 +15793,8 @@ view_algorithm:
           { Lex->create_view_algorithm= VIEW_ALGORITHM_MERGE; }
         | ALGORITHM_SYM '=' TEMPTABLE_SYM
           { Lex->create_view_algorithm= VIEW_ALGORITHM_TMPTABLE; }
+        | ALGORITHM_SYM EQ CACHETABLE_SYM
+          { Lex->create_view_algorithm= VIEW_ALGORITHM_CACHETABLE; }
         ;
 
 view_suid:

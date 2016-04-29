@@ -1614,6 +1614,7 @@ class IS_table_read_plan;
 #define VIEW_ALGORITHM_INHERIT   DTYPE_VIEW
 #define VIEW_ALGORITHM_MERGE    (DTYPE_VIEW | DTYPE_MERGE)
 #define VIEW_ALGORITHM_TMPTABLE (DTYPE_VIEW | DTYPE_MATERIALIZE)
+#define VIEW_ALGORITHM_CACHETABLE (DTYPE_VIEW | DTYPE_TABLE)
 
 /*
   View algorithm values as stored in the FRM. Values differ from in-memory
@@ -1623,6 +1624,7 @@ class IS_table_read_plan;
 #define VIEW_ALGORITHM_UNDEFINED_FRM  0
 #define VIEW_ALGORITHM_MERGE_FRM      1
 #define VIEW_ALGORITHM_TMPTABLE_FRM   2
+#define VIEW_ALGORITHM_CACHETABLE_FRM   4
 
 #define JOIN_TYPE_LEFT	1
 #define JOIN_TYPE_RIGHT	2
@@ -1725,6 +1727,8 @@ class Item_in_subselect;
      - merge    (TABLE_LIST::effective_algorithm == VIEW_ALGORITHM_MERGE)
            also (TABLE_LIST::field_translation != NULL)
      - tmptable (TABLE_LIST::effective_algorithm == VIEW_ALGORITHM_TMPTABLE)
+           also (TABLE_LIST::field_translation == NULL)
+     - cachetable (TABLE_LIST::effective_algorithm == VIEW_ALGORITHM_CACHETABLE)
            also (TABLE_LIST::field_translation == NULL)
   2.5) TODO: Add derived tables description here
   3) nested table reference (TABLE_LIST::nested_join != NULL)
@@ -1975,13 +1979,14 @@ struct TABLE_LIST
   ulonglong	file_version;		/* version of file's field set */
   ulonglong	mariadb_version;	/* version of server on creation */
   ulonglong     updatable_view;         /* VIEW can be updated */
-  /** 
+  /**
       @brief The declared algorithm, if this is a view.
       @details One of
       - VIEW_ALGORITHM_UNDEFINED
       - VIEW_ALGORITHM_TMPTABLE
+      - VIEW_ALGORITHM_CACHETABLE
       - VIEW_ALGORITHM_MERGE
-      @to do Replace with an enum 
+      @to do Replace with an enum
   */
   ulonglong	algorithm;
   ulonglong     view_suid;              /* view is suid (TRUE dy default) */
@@ -1991,13 +1996,14 @@ struct TABLE_LIST
     algorithm)
   */
   uint8         effective_with_check;
-  /** 
+  /**
       @brief The view algorithm that is actually used, if this is a view.
       @details One of
       - VIEW_ALGORITHM_UNDEFINED
       - VIEW_ALGORITHM_TMPTABLE
+      - VIEW_ALGORITHM_CACHETABLE
       - VIEW_ALGORITHM_MERGE
-      @to do Replace with an enum 
+      @to do Replace with an enum
   */
   uint8         derived_type;
   GRANT_INFO	grant;
