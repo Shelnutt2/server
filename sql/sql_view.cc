@@ -945,15 +945,16 @@ static int mysql_register_view(THD *thd, TABLE_LIST *view,
   /*
     version 1 - before 10.0.5
     version 2 - empty definer_host means a role
+    version 3 - Add cache_table
   */
-  view->file_version= 2;
+  view->file_version= 3;
   view->mariadb_version= MYSQL_VERSION_ID;
   view->calc_md5(md5);
   if (!(view->md5.str= (char*) thd->memdup(md5, 32)))
   {
     my_error(ER_OUT_OF_RESOURCES, MYF(0));
     error= -1;
-    goto err;   
+    goto err;
   }
   view->md5.length= 32;
   can_be_merged= lex->can_be_merged();
