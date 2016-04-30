@@ -362,6 +362,7 @@ static COMMANDS commands[] = {
   { "BY", 0, 0, 0, ""},
   { "BYTE", 0, 0, 0, ""},
   { "CACHE", 0, 0, 0, ""},
+  { "CACHETABLE", 0, 0, 0, ""},
   { "CALL", 0, 0, 0, ""},
   { "CASCADE", 0, 0, 0, ""},
   { "CASCADED", 0, 0, 0, ""},
