@@ -1975,6 +1975,7 @@ struct TABLE_LIST
   LEX_STRING	view_db;		/* saved view database */
   LEX_STRING	view_name;		/* saved view name */
   LEX_STRING	timestamp;		/* GMT time stamp of last operation */
+  LEX_STRING	cache_table;		/* Name of cache table */
   st_lex_user   definer;                /* definer of view */
   ulonglong	file_version;		/* version of file's field set */
   ulonglong	mariadb_version;	/* version of server on creation */

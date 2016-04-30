@@ -773,6 +773,9 @@ static File_option view_parameters[]=
  {{ C_STRING_WITH_LEN("mariadb-version")},
   my_offsetof(TABLE_LIST, mariadb_version),
   FILE_OPTIONS_ULONGLONG},
+ {{ C_STRING_WITH_LEN("cache-table")},
+  my_offsetof(TABLE_LIST, cache_table),
+  FILE_OPTIONS_STRING},
  {{NullS, 0},			0,
   FILE_OPTIONS_STRING}
 };
@@ -928,7 +931,15 @@ static int mysql_register_view(THD *thd, TABLE_LIST *view,
   {
     my_error(ER_OUT_OF_RESOURCES, MYF(0));
     error= -1;
-    goto err;   
+    goto err;
+  }
+
+  if(lex->create_view_algorithm == VIEW_ALGORITHM_CACHETABLE)
+  {
+    view->cache_table.str = (char *) malloc(1 + strlen(view->table_name)+ strlen("-cache") );
+    strcpy(view->cache_table.str, view->table_name);
+    strcat(view->cache_table.str, "-cache");
+    view->cache_table.length = strlen(view->cache_table.str);
   }
 
   /*
