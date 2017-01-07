@@ -15793,7 +15793,7 @@ view_algorithm:
           { Lex->create_view_algorithm= VIEW_ALGORITHM_MERGE; }
         | ALGORITHM_SYM '=' TEMPTABLE_SYM
           { Lex->create_view_algorithm= VIEW_ALGORITHM_TMPTABLE; }
-        | ALGORITHM_SYM EQ CACHETABLE_SYM
+        | ALGORITHM_SYM '=' CACHETABLE_SYM
           { Lex->create_view_algorithm= VIEW_ALGORITHM_CACHETABLE; }
         ;
 
