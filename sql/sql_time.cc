@@ -304,7 +304,11 @@ bool str_to_datetime(CHARSET_INFO *cs, const char *str, uint length,
     length= to_ascii(cs, str, length, cnv, sizeof(cnv));
     str= cnv;
   }
-  return str_to_datetime(str, length, l_time, flags, status);
+  long offset;
+  //str_to_offset(current_thd->variables.time_zone->get_name()->ptr(), current_thd->variables.time_zone->get_name()->length(), &offset);
+  //fprintf(stderr, "Calling str_to_datetime_with_timezone with: name: %s, length: %d, offset: %ld\n", current_thd->variables.time_zone->get_name()->ptr(), current_thd->variables.time_zone->get_name()->length(), offset);
+  flags |= TIME_ZONE_CONVERSION;
+  return str_to_datetime_with_timezone(str, length, l_time, flags, status, offset);
 }
 
 

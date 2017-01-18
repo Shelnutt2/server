@@ -67,12 +67,14 @@ extern uchar days_in_month[];
 #define TIME_NO_ZERO_IN_DATE    (1UL << 23) /* == MODE_NO_ZERO_IN_DATE */
 #define TIME_NO_ZERO_DATE	(1UL << 24) /* == MODE_NO_ZERO_DATE    */
 #define TIME_INVALID_DATES	(1UL << 25) /* == MODE_INVALID_DATES   */
+#define TIME_ZONE_CONVERSION (1UL << 26)
 
 #define MYSQL_TIME_WARN_TRUNCATED    1
 #define MYSQL_TIME_WARN_OUT_OF_RANGE 2
+#define MYSQL_TIME_WARN_NO_TIMEZONE_CONVERSION 4
 #define MYSQL_TIME_NOTE_TRUNCATED    16
 
-#define MYSQL_TIME_WARN_WARNINGS (MYSQL_TIME_WARN_TRUNCATED|MYSQL_TIME_WARN_OUT_OF_RANGE)
+#define MYSQL_TIME_WARN_WARNINGS (MYSQL_TIME_WARN_TRUNCATED|MYSQL_TIME_WARN_OUT_OF_RANGE|MYSQL_TIME_WARN_NO_TIMEZONE_CONVERSION)
 #define MYSQL_TIME_WARN_NOTES    (MYSQL_TIME_NOTE_TRUNCATED)
 
 #define MYSQL_TIME_WARN_HAVE_WARNINGS(x) MY_TEST((x) & MYSQL_TIME_WARN_WARNINGS)
@@ -113,6 +115,8 @@ my_bool str_to_time(const char *str, uint length, MYSQL_TIME *l_time,
                     ulonglong flag, MYSQL_TIME_STATUS *status);
 my_bool str_to_datetime(const char *str, uint length, MYSQL_TIME *l_time,
                         ulonglong flags, MYSQL_TIME_STATUS *status);
+my_bool str_to_datetime_with_timezone(const char *str, uint length, MYSQL_TIME *l_time,
+                        ulonglong flags, MYSQL_TIME_STATUS *status, int timezone);
 longlong number_to_datetime(longlong nr, ulong sec_part, MYSQL_TIME *time_res,
                             ulonglong flags, int *was_cut);
 

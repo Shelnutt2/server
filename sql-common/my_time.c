@@ -151,7 +151,7 @@ static int get_date_time_separator(uint *number_of_fields, ulonglong flags,
   if (s >= end)
     return 0;
 
-  if (*s == 'T')
+  if (*s == 'T' || *s == 't')
   {
     (*str)++;
     return 0;
@@ -191,7 +191,7 @@ static int get_date_time_separator(uint *number_of_fields, ulonglong flags,
 
 static int get_maybe_T(const char **str, const char *end)
 {
-  if (*str < end && **str == 'T')
+  if (*str < end && (**str == 'T' || **str == 't'))
     (*str)++;
   return 0;
 }
@@ -244,6 +244,148 @@ static void get_microseconds(ulong *val, MYSQL_TIME_STATUS *status,
     status->warnings|= MYSQL_TIME_NOTE_TRUNCATED;
 }
 
+int parse_rfc3339_timezone(MYSQL_TIME_STATUS *status,
+                             const char **str, const char *end)
+{
+  uint hour_offset =0;
+  uint minute_offset= 0;
+  uint error_code;
+  uint number_of_fields = 0;
+
+  const char *op= *str;
+
+  // Determine RFC3339 offset sign
+  int operator_sign = 1;
+  if(*op == '-')
+    operator_sign = -1;
+
+  // Parse Hour Offset
+  (*str)++;
+  if(get_digits(&hour_offset, &number_of_fields, str, end, 2))
+    status->warnings|= MYSQL_TIME_WARN_TRUNCATED;
+
+  // Parse Minute Offset
+  (*str)++;
+  if(get_digits(&minute_offset, &number_of_fields, str, end, 2))
+    status->warnings|= MYSQL_TIME_WARN_TRUNCATED;
+
+  // Check for any remaining digits
+  if (skip_digits(str, end))
+    status->warnings|= MYSQL_TIME_NOTE_TRUNCATED;
+
+  // Convert the rfc3339 offset to seconds
+  return operator_sign * ((hour_offset * 60 * 60) + (minute_offset * 60));
+}
+
+static void convert_timestamp_timezone(MYSQL_TIME *l_time, 
+                             int from_timezone, int to_timezone)
+{
+
+  char *str_start_datetime;
+  my_TIME_to_str(l_time, str_start_datetime, 0);
+
+  int timezone_difference = to_timezone - from_timezone;
+
+  //If there is no different then don't do any conversion
+  if(timezone_difference == 0)
+       return;
+  int operator_sign = (timezone_difference < 0)? -1 : 1;
+
+  // Get absolute minute and hour offsets
+  int minute_offset = operator_sign * (timezone_difference / 60);
+  int hour_offset = operator_sign * (timezone_difference / 3600);
+
+
+  // flip offset
+
+  /* Adjust for minute offset */
+  
+  if(operator_sign == -1 && minute_offset > l_time->minute) {
+    if(l_time->hour == 0) {
+      if(l_time->day == 1) {
+        if(l_time->month == 1) {
+          l_time->year--;
+          l_time->month = 12;
+        } else {
+          l_time->month--;
+        }
+        l_time->day = days_in_month[l_time->month-1];
+        if(l_time->month == 2 && calc_days_in_year(l_time->year) == 366)
+            l_time->day = 29;
+      } else {
+        l_time->day--;
+      }
+    } else {
+      l_time->hour--;
+      l_time->minute += (60 - (operator_sign * minute_offset));
+    }
+  } else if(operator_sign == 1 && (minute_offset + l_time->minute) >= 60) {
+    if(l_time->hour == 23) {
+      if(l_time->day == days_in_month[l_time->month-1] ||
+               (l_time->month == 2 && calc_days_in_year(l_time->year) == 366 && l_time->day == 29)) {
+        if(l_time->month == 12) {
+          l_time->year++;
+          l_time->month = 1;
+          l_time->day = 1;
+        } else {
+          l_time->month++;
+          l_time->day = 1;
+        }
+      } else {
+        l_time->day++;
+      }
+      l_time->hour == 0;
+      l_time->minute += minute_offset - 60;
+    } else {
+      l_time->hour++;
+      l_time->minute += (60 - minute_offset);
+    }
+  } else {
+    l_time->minute += (operator_sign * minute_offset);
+  }
+
+  /* Adjust for hour offset */
+  
+  if(operator_sign == -1 && hour_offset > l_time->hour) {
+    if(l_time->day == 1) {
+      if(l_time->month == 1) {
+        l_time->year--;
+        l_time->month = 12;
+      } else {
+        l_time->month--;
+      }
+      l_time->day = days_in_month[l_time->month-1];
+      if(l_time->month == 2 && calc_days_in_year(l_time->year) == 366)
+          l_time->day = 29;
+    } else {
+      l_time->day--;
+      l_time->hour += 24 + (operator_sign * hour_offset);
+    }
+  } else if(operator_sign == 1 && (hour_offset + l_time->hour) > 23) {
+    if(l_time->day == days_in_month[l_time->month-1] ||
+             (l_time->month == 2 && calc_days_in_year(l_time->year) == 366 && l_time->day == 29)) {
+      if(l_time->month == 12) {
+        l_time->year++;
+        l_time->month = 1;
+        l_time->day = 1;
+      } else {
+        l_time->month++;
+        l_time->day = 1;
+      }
+    } else {
+        l_time->day++;
+    }
+    l_time->hour += hour_offset - 23;
+  } else {
+    l_time->hour += (operator_sign * hour_offset);
+  }
+
+  char *str_end_datetime;
+  my_TIME_to_str(l_time, str_end_datetime, 0);
+  
+  fprintf(stderr, "start datetime: %s, end datetime: %s, from_timezone: %d, to_timezone: %d \n", str_start_datetime, str_end_datetime, from_timezone, to_timezone);
+}
+
 
 /*
   Convert a timestamp string to a MYSQL_TIME value.
@@ -259,7 +401,9 @@ static void get_microseconds(ulong *val, MYSQL_TIME_STATUS *status,
                         TIME_NO_ZERO_IN_DATE	Don't allow partial dates
                         TIME_NO_ZERO_DATE	Don't allow 0000-00-00 date
                         TIME_INVALID_DATES	Allow 2000-02-31
+                        TIME_ZONE_CONVERSION If timezone is present in date, conver to passed timezone
     status              Conversion status
+    timezone            Timezone to optionally convert datetime to
 
 
   DESCRIPTION
@@ -267,6 +411,9 @@ static void get_microseconds(ulong *val, MYSQL_TIME_STATUS *status,
     YYMMDD, YYYYMMDD, YYMMDDHHMMSS, YYYYMMDDHHMMSS
     YY-MM-DD, YYYY-MM-DD, YY-MM-DD HH.MM.SS
     YYYYMMDDTHHMMSS  where T is a the character T (ISO8601)
+    YYYYMMDDTHHMMSS-HH:MM  where T is a the character T (ISO8601)
+    YYYYMMDDTHHMMSS+HH:MM  where T is a the character T (ISO8601)
+    YYYYMMDDTHHMMSSZ  where T is a the character T (ISO8601) AND Z is the character Z (RFC3339)
     Also dates where all parts are zero are allowed
 
     The second part may have an optional .###### fraction part.
@@ -300,11 +447,23 @@ str_to_datetime(const char *str, uint length, MYSQL_TIME *l_time,
   DBUG_ENTER("str_to_datetime");
   bzero(l_time, sizeof(*l_time));
 
+  fprintf(stderr, "in str_to_datetime\n");
   if (flags & TIME_TIME_ONLY)
   {
     my_bool ret= str_to_time(str, length, l_time, flags, status);
     DBUG_RETURN(ret);
   }
+
+  /*
+   * Check for TIMEZONE conversion flag.
+   * If it is set, warn that it can't be processed in this function
+  */
+  /*
+  if (flags & TIME_ZONE_CONVERSION)
+  {
+    status->warnings= MYSQL_TIME_WARN_NO_TIMEZONE_CONVERSION;
+  }
+  */
 
   my_time_status_init(status);
 
@@ -326,7 +485,7 @@ str_to_datetime(const char *str, uint length, MYSQL_TIME *l_time,
   pos= str;
   digits= skip_digits(&pos, end);
 
-  if (pos < end && *pos == 'T') /* YYYYYMMDDHHMMSSThhmmss is supported too */
+  if (pos < end && (*pos == 'T' || *pos == 't')) /* YYYYYMMDDHHMMSSThhmmss is supported too */
   {
     pos++;
     digits+= skip_digits(&pos, end);
@@ -336,12 +495,21 @@ str_to_datetime(const char *str, uint length, MYSQL_TIME *l_time,
     pos++;
     skip_digits(&pos, end); // ignore the return value
   }
+  if (pos < end && (*pos == '-' || *pos == '+') && digits >= 12) /* YYYYYMMDDHHMMSShhmmss.uuuuuu-HH:MM is supported too */
+  {
+    pos+=6; // Skip 6 places as defined in RFC3339 reserved for local offset
+  }
+  else if (pos < end && *pos == 'Z' && digits >= 12) /* YYYYYMMDDHHMMSShhmmss.uuuuuuZ is supported too */
+  {
+    pos++;
+  }
+
 
   if (pos == end)
   {
     /*
       Found date in internal format
-      (only numbers like [YY]YYMMDD[T][hhmmss[.uuuuuu]])
+      (only numbers like [YY]YYMMDD[T|t][hhmmss[.uuuuuu]][[Z|z]|[[-|+]hh[[:]mm]]])
     */
     year_length= (digits == 4 || digits == 8 || digits >= 14) ? 4 : 2;
     if (get_digits(&l_time->year, &number_of_fields, &str, end, year_length) 
@@ -388,6 +556,19 @@ str_to_datetime(const char *str, uint length, MYSQL_TIME *l_time,
     get_microseconds(&l_time->second_part, status,
                      &number_of_fields, &str, end);
   }
+  if (!status->warnings && str < end && (*str == '-' || *str == '+'))
+  {
+    if (flags & TIME_ZONE_CONVERSION)
+      end = str; // Set end equal to current string position to avoid setting MYSQL_TIME_WARN_TRUNCATED
+    else
+      str+=6;
+  }
+  else if (!status->warnings && str < end && (*str == 'Z' || *str == 'z')) {
+    if (flags & TIME_ZONE_CONVERSION)
+      end = str; // Set end equal to current string position to avoid setting MYSQL_TIME_WARN_TRUNCATED
+    else
+      str++;
+  }
 
   not_zero_date = l_time->year || l_time->month || l_time->day ||
                   l_time->hour || l_time->minute || l_time->second ||
@@ -426,9 +607,50 @@ err:
   DBUG_RETURN(TRUE);
 }
 
+/*
+ * Convert string to MYSQL_TIME and apply conversion to give timezone
+ *
+*/
+my_bool
+str_to_datetime_with_timezone(const char *str, uint length, MYSQL_TIME *l_time,
+                ulonglong flags, MYSQL_TIME_STATUS *status, int to_timezone)
+
+{
+  const char *end=str+length, *pos;
+  my_bool convert_timezone = 0;
+  fprintf(stderr, "in str_to_datetime_with_timezone\n");
+  if (flags & TIME_ZONE_CONVERSION)
+  {
+    fprintf(stderr, "TIME_ZONE_CONVERSION found, using: %d\n", to_timezone);
+    flags &= ~TIME_ZONE_CONVERSION;
+    if (!(flags & TIME_TIME_ONLY || flags & TIME_DATETIME_ONLY))
+    {
+      convert_timezone = 1;
+    }
+  }
+  my_bool parse_dt_status = str_to_datetime(str, length, l_time, flags, status);
+
+  if(parse_dt_status && convert_timezone)
+  {
+    int from_timezone = to_timezone;
+    if (!status->warnings && str < end && (*str == '-' || *str == '+'))
+    {
+      from_timezone = parse_rfc3339_timezone(status, &str, end); // Parse next 6 places as defined in RFC3339 reserved for gmt offset
+    }
+    else if (!status->warnings && str < end && (*str == 'Z' || *str == 'z')) {
+      str++;
+      from_timezone = 0;
+    }
+    convert_timestamp_timezone(l_time, from_timezone, to_timezone);
+  }
+  return parse_dt_status;
+}
+
+
 
 /*
  Convert a time string to a MYSQL_TIME struct.
+  const char *end=str+length, *pos;
 
   SYNOPSIS
    str_to_time()
@@ -942,7 +1164,7 @@ my_system_gmt_sec(const MYSQL_TIME *t_src, long *my_timezone, uint *error_code)
     diff=(3600L*(long) (days*24+((int) t->hour - (int) l_time->tm_hour)) +
           (long) (60*((int) t->minute - (int) l_time->tm_min)) +
           (long) ((int) t->second - (int) l_time->tm_sec));
-    current_timezone+= diff+3600;		/* Compensate for -3600 above */
+    current_timezone+= diff-3600;		/* Compensate for -3600 above */
     tmp+= (time_t) diff;
     localtime_r(&tmp,&tm_tmp);
     l_time=&tm_tmp;
