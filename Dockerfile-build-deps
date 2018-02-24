@@ -1,0 +1,59 @@
+FROM ubuntu:14.04
+
+RUN apt-get update && apt install -y software-properties-common python-software-properties curl
+
+RUN curl -L http://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+RUN add-apt-repository ppa:ubuntu-toolchain-r/test
+RUN apt-add-repository 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-4.0 main'
+RUN apt-add-repository 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-5.0 main'
+
+RUN apt-get update && apt-get install -y gcc-5 \
+  g++-5 \
+  gcc-6 \
+  g++-6 \
+  build-essential \
+  clang-4.0 \
+  llvm-4.0-dev \
+  clang-5.0 \
+  llvm-5.0-dev \
+  libasan0 \
+  bison \
+  chrpath \
+  cmake \
+  gdb \
+  libaio-dev \
+  libboost-dev \
+  libcurl3-dev \
+  libdbd-mysql \
+  libjudy-dev \
+  libncurses5-dev \
+  libpam0g-dev \
+  libpcre3-dev \
+  libreadline-gplv2-dev \
+  libstemmer-dev \
+  libssl-dev \
+  libnuma-dev \
+  libxml2-dev \
+  lsb-release \
+  perl \
+  psmisc \
+  zlib1g-dev \
+  libcrack2-dev \
+  cracklib-runtime \
+  libjemalloc-dev \
+  libsnappy-dev \
+  liblzma-dev \
+  libzmq-dev \
+  uuid-dev \
+  ccache \
+  git \
+  wget \
+  && rm -rf /var/lib/apt/lists/*
+
+# Set clang 5.0 to be clang, this mimics travis ci
+RUN update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-5.0 100
+RUN update-alternatives --install /usr/bin/clang clang /usr/bin/clang-5.0 100
+
+ENV MTR_MEM /tmp
+
+WORKDIR /opt/server
